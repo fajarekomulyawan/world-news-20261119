@@ -43,10 +43,19 @@ function jpegSize(b: Buffer): { w: number; h: number } {
   throw new Error('no start-of-frame marker found in JPEG');
 }
 
+function pngSize(b: Buffer): { w: number; h: number } {
+  // A PNG opens with an 8-byte signature, then the IHDR chunk: 4 bytes of
+  // length, the literal 'IHDR', then width and height as big-endian u32s.
+  if (b.toString('ascii', 12, 16) !== 'IHDR') throw new Error('PNG has no IHDR chunk');
+  return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) };
+}
+
 if (isJpeg) {
   const { w, h } = jpegSize(bytes);
   if (w > 1024 || h > 1024) throw new Error(`entry.png is ${w}x${h}, over the 1024x1024 cap`);
   console.log(`entry.png written: JPEG ${w}x${h}, ${bytes.length} bytes`);
 } else {
-  console.log(`entry.png written: PNG, ${bytes.length} bytes`);
+  const { w, h } = pngSize(bytes);
+  if (w > 1024 || h > 1024) throw new Error(`entry.png is ${w}x${h}, over the 1024x1024 cap`);
+  console.log(`entry.png written: PNG ${w}x${h}, ${bytes.length} bytes`);
 }
